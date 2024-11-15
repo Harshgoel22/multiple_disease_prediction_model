@@ -1,22 +1,20 @@
 # -*- coding: utf-8 -*-
 """
-Created on Sun May  8 21:01:15 2022
-
 @author: harsh goel
 """
 
 import pickle
 import streamlit as st
 from streamlit_option_menu import option_menu
+import numpy as np
 
 
 # loading the saved models
+scaler = pickle.load(open('./Models/scaler.pkl', 'rb'))
 
-diabetes_model = pickle.load(open('diabetes_model.sav', 'rb'))
-
-heart_disease_model = pickle.load(open('heart_disease_model.sav', 'rb'))
-
-parkinsons_model = pickle.load(open('parkinsons_model.sav', 'rb'))
+diabetes_model = pickle.load(open('./Models/diabetes_model.pkl', 'rb'))
+heart_disease_model = pickle.load(open('./Models/rf_classfier.pkl', 'rb'))
+parkinsons_model = pickle.load(open('./Models/parkinsons_model.pkl', 'rb'))
 
 
 
@@ -58,7 +56,7 @@ if (selected == 'Diabetes Prediction'):
         Insulin = st.text_input('Insulin Level')
     
     with col3:
-        BMI = st.text_input('BMI value')
+        BMI_diab = st.text_input('BMI value')
     
     with col1:
         DiabetesPedigreeFunction = st.text_input('Diabetes Pedigree Function value')
@@ -73,7 +71,7 @@ if (selected == 'Diabetes Prediction'):
     # creating a button for Prediction
     
     if st.button('Diabetes Test Result'):
-        diab_prediction = diabetes_model.predict([[Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI, DiabetesPedigreeFunction, Age]])
+        diab_prediction = diabetes_model.predict([[Pregnancies, Glucose, BloodPressure, SkinThickness, Insulin, BMI_diab, DiabetesPedigreeFunction, Age]])
         
         if (diab_prediction[0] == 1):
           diab_diagnosis = 'The person is diabetic'
@@ -86,6 +84,28 @@ if (selected == 'Diabetes Prediction'):
 
 
 # Heart Disease Prediction Page
+def predict(model, scaler, male, age, currentSmoker, cigsPerDay, BPMeds, prevalentStroke, prevalentHyp, diabetes,
+            totChol, sysBP, diaBP, BMI, heartRate, glucose):
+    # Encode categorical variables
+    male_encoded = 1 if male.lower() == "male" else 0
+    currentSmoker_encoded = 1 if currentSmoker.lower() == "yes" else 0
+    BPMeds_encoded = 1 if BPMeds.lower() == "yes" else 0
+    prevalentStroke_encoded = 1 if prevalentStroke.lower() == "yes" else 0
+    prevalentHyp_encoded = 1 if prevalentHyp.lower() == "yes" else 0
+    diabetes_encoded = 1 if diabetes.lower() == "yes" else 0
+
+    # Prepare features array
+    features = np.array([[male_encoded, age, currentSmoker_encoded, cigsPerDay, BPMeds_encoded, prevalentStroke_encoded,
+                          prevalentHyp_encoded, diabetes_encoded, totChol, sysBP, diaBP, BMI, heartRate, glucose]])
+
+    # Scale the features
+    scaled_features = scaler.transform(features)
+
+    # Predict using the model
+    result = model.predict(scaled_features)
+
+    return result[0]
+
 if (selected == 'Heart Disease Prediction'):
     
     # page title
@@ -94,43 +114,46 @@ if (selected == 'Heart Disease Prediction'):
     col1, col2, col3 = st.columns(3)
     
     with col1:
+        male = st.text_input('Gender')
+        
+    with col2:
         age = st.text_input('Age')
         
-    with col2:
-        sex = st.text_input('Sex')
-        
     with col3:
-        cp = st.text_input('Chest Pain types')
+        currentSmoker = st.text_input('Are you currently a smoker?')
         
     with col1:
-        trestbps = st.text_input('Resting Blood Pressure')
+        cigsPerDay = st.text_input('Number of cigarettes smoked per day')
         
     with col2:
-        chol = st.text_input('Serum Cholestoral in mg/dl')
+        BPMeds = st.text_input('Are you on blood pressure medication?')
         
     with col3:
-        fbs = st.text_input('Fasting Blood Sugar > 120 mg/dl')
+        prevalentStroke = st.text_input('Do you have had a stroke?')
         
     with col1:
-        restecg = st.text_input('Resting Electrocardiographic results')
+        prevalentHyp = st.text_input('Do you have hypertension?')
         
     with col2:
-        thalach = st.text_input('Maximum Heart Rate achieved')
+        diabetes = st.text_input('Do you have diabetes?')
         
     with col3:
-        exang = st.text_input('Exercise Induced Angina')
+        totChol = st.text_input('Total cholesterol level')
         
     with col1:
-        oldpeak = st.text_input('ST depression induced by exercise')
+        sysBP = st.text_input('Systolic blood pressure')
         
     with col2:
-        slope = st.text_input('Slope of the peak exercise ST segment')
+        diaBP = st.text_input('Diastolic blood pressure')
         
     with col3:
-        ca = st.text_input('Major vessels colored by flourosopy')
+        BMI_heart = st.text_input('Body Mass Index')
         
     with col1:
-        thal = st.text_input('thal: 0 = normal; 1 = fixed defect; 2 = reversable defect')
+        heartRate = st.text_input('Heart rate')
+    
+    with col2:
+        glucose = st.text_input('Glucose level')
         
         
      
@@ -141,12 +164,8 @@ if (selected == 'Heart Disease Prediction'):
     # creating a button for Prediction
     
     if st.button('Heart Disease Test Result'):
-        heart_prediction = heart_disease_model.predict([[age, sex, cp, trestbps, chol, fbs, restecg,thalach,exang,oldpeak,slope,ca,thal]])                          
-        
-        if (heart_prediction[0] == 1):
-          heart_diagnosis = 'The person is having heart disease'
-        else:
-          heart_diagnosis = 'The person does not have any heart disease'
+        prediction = predict(heart_disease_model, scaler, male, age, currentSmoker, cigsPerDay, BPMeds, prevalentStroke, prevalentHyp, diabetes, totChol, sysBP, diaBP, BMI_heart, heartRate, glucose)
+        heart_diagnosis = "The Patient has Heart Disease" if prediction == 1 else "The Patient has No Heart Disease"
         
     st.success(heart_diagnosis)
         
